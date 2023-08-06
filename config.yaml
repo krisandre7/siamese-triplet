@@ -1,0 +1,50 @@
+# Important info
+dataset_name: 'casia'
+model_name: 'siameseNet18'
+backbone: 'resnet18'
+
+output_path: './reports'
+random_seed: 42
+
+# StratifiedShuffleSplit
+train_size: 0.666
+test_size: 0.334
+# train_size: 0.334
+# test_size: 0.666
+
+# Datasets
+final_shape: [3, 280, 320]
+dataset_dir: './'
+train_dataset:
+  augment: True
+  grayscale: False
+  shuffle: True
+test_dataset:
+  augment: False
+  grayscale: False
+  shuffle: False
+
+
+# Dataloader
+train_dataloader:
+  batch_size: 64
+  drop_last: True
+val_dataloader:
+  batch_size: 64
+
+# Model
+output_num: 1
+
+# loss
+similarity_margin: 2.0
+accuracy_threshold: 0.3
+
+# 0: ContrastiveLoss
+# 1: Binary Cross Entropy
+loss: 1
+
+# Training
+learning_rate: 0.001
+epochs: 1000
+save_best: True
+save_after: 50
