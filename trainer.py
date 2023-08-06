@@ -45,7 +45,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
     total_loss = 0
 
     for batch_idx, (data, target) in enumerate(train_loader):
-        target = target if len(target) > 0 else None
+        target = target.to(device) if len(target) > 0 else None
         # if not type(data) in (tuple, list):
         #     data = (data,)
         # if cuda:
@@ -54,11 +54,10 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
         #         target = target.cuda()
         # target = target.type(torch.LongTensor)
         # data = tuple(d.to(device) for d in data)
-        target = target.to(device)
 
         optimizer.zero_grad()
         # outputs = model(*data)
-        outputs = model(data[0].to(device), data[1].to(device))
+        outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
 
         # if type(outputs) not in (tuple, list):
         #     outputs = (outputs,)
@@ -69,7 +68,7 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
         #     loss_inputs += target
 
         # loss_outputs = loss_fn(*loss_inputs)
-        loss_outputs = loss_fn(*outputs, target)
+        loss_outputs = loss_fn(*outputs)
         loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
         losses.append(loss.item())
         total_loss += loss.item()
@@ -100,7 +99,7 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
         model.eval()
         val_loss = 0
         for batch_idx, (data, target) in enumerate(val_loader):
-            target = target if len(target) > 0 else None
+            target = target.to(device) if len(target) > 0 else None
             # if not type(data) in (tuple, list):
             #     data = (data,)
             # if cuda:
@@ -109,9 +108,8 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
             #         target = target.cuda()
             # target = target.type(torch.LongTensor)
             # data = tuple(d.to(device) for d in data)
-            target = target.to(device)
 
-            outputs = model(data[0].to(device), data[1].to(device))
+            outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
 
             # if type(outputs) not in (tuple, list):
             #     outputs = (outputs,)
@@ -121,7 +119,7 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
             #     loss_inputs += target
 
             # loss_outputs = loss_fn(*loss_inputs)
-            loss_outputs = loss_fn(*outputs, target)
+            loss_outputs = loss_fn(*outputs)
             loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
             val_loss += loss.item()
 

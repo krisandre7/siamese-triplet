@@ -6,12 +6,12 @@ from torch.utils.data.sampler import BatchSampler
 import torch
 from torchvision import transforms
 
-class CasiaDataset(Dataset):
-    def __init__(self, image_paths, image_classes, final_shape, train, grayscale, augment=False, **kwargs):
+class ImageDataset(Dataset):
+    def __init__(self, image_paths, image_classes, final_shape, shuffle, grayscale, augment=False, **kwargs):
         self.image_paths = image_paths
         self.image_classes = image_classes
         self.grayscale = grayscale
-        self.train = train
+        self.shuffle = shuffle
         
         self.transform = transforms.Compose([
                 transforms.ToTensor(),
@@ -23,7 +23,7 @@ class CasiaDataset(Dataset):
     def __len__(self):
         return len(self.image_paths)
 
-class SiameseCasia(Dataset):
+class SiameseDataset(Dataset):
     """
     Train: For each sample creates randomly a positive or a negative pair
     Test: Creates fixed pairs for testing
@@ -98,33 +98,37 @@ class SiameseCasia(Dataset):
         return len(self.image_paths)
 
 
-class TripletMNIST(Dataset):
+class TripletDataset(Dataset):
     """
     Train: For each sample (anchor) randomly chooses a positive and negative samples
     Test: Creates fixed triplets for testing
     """
 
-    def __init__(self, mnist_dataset):
-        self.mnist_dataset = mnist_dataset
-        self.train = self.mnist_dataset.train
-        self.transform = self.mnist_dataset.transform
+    def __init__(self, image_paths, image_classes, final_shape, random_seed, shuffle, grayscale, augment=False, **kwargs):
+        self.shuffle = shuffle
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+        self.image_paths = image_paths
+        self.image_classes = image_classes
+        self.grayscale = grayscale
 
-        if self.train:
-            self.train_labels = self.mnist_dataset.train_labels
-            self.train_data = self.mnist_dataset.train_data
+        if self.shuffle:
+            self.train_labels = self.image_classes
+            self.train_data = self.image_paths
             self.labels_set = set(self.train_labels.numpy())
             self.label_to_indices = {label: np.where(self.train_labels.numpy() == label)[0]
                                      for label in self.labels_set}
 
         else:
-            self.test_labels = self.mnist_dataset.test_labels
-            self.test_data = self.mnist_dataset.test_data
+            self.test_labels = self.image_classes
+            self.test_data = self.image_paths
             # generate fixed triplets for testing
             self.labels_set = set(self.test_labels.numpy())
             self.label_to_indices = {label: np.where(self.test_labels.numpy() == label)[0]
                                      for label in self.labels_set}
 
-            random_state = np.random.RandomState(29)
+            random_state = np.random.RandomState(random_seed)
 
             triplets = [[i,
                          random_state.choice(self.label_to_indices[self.test_labels[i].item()]),
@@ -138,10 +142,10 @@ class TripletMNIST(Dataset):
             self.test_triplets = triplets
 
     def __getitem__(self, index):
-        if self.train:
+        if self.shuffle:
             img1, label1 = self.train_data[index], self.train_labels[index].item()
             positive_index = index
-            while positive_index == index:
+            while positive_index == index and len(self.label_to_indices[label1]) > 1:
                 positive_index = np.random.choice(self.label_to_indices[label1])
             negative_label = np.random.choice(list(self.labels_set - set([label1])))
             negative_index = np.random.choice(self.label_to_indices[negative_label])
@@ -152,9 +156,9 @@ class TripletMNIST(Dataset):
             img2 = self.test_data[self.test_triplets[index][1]]
             img3 = self.test_data[self.test_triplets[index][2]]
 
-        img1 = Image.fromarray(img1.numpy(), mode='L')
-        img2 = Image.fromarray(img2.numpy(), mode='L')
-        img3 = Image.fromarray(img3.numpy(), mode='L')
+        img1 = Image.open(img1).convert("L" if self.grayscale == 1 else "RGB")
+        img2 = Image.open(img2).convert("L" if self.grayscale == 1 else "RGB")
+        img3 = Image.open(img3).convert("L" if self.grayscale == 1 else "RGB")
         if self.transform is not None:
             img1 = self.transform(img1)
             img2 = self.transform(img2)
@@ -162,7 +166,7 @@ class TripletMNIST(Dataset):
         return (img1, img2, img3), []
 
     def __len__(self):
-        return len(self.mnist_dataset)
+        return len(self.image_classes)
 
 
 class BalancedBatchSampler(BatchSampler):
