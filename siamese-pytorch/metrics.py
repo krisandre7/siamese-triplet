@@ -1,5 +1,5 @@
 import numpy as np
-
+import torch
 
 class Metric:
     def __init__(self):
@@ -17,6 +17,33 @@ class Metric:
     def name(self):
         raise NotImplementedError
 
+class TripletAccuracy(Metric):
+    def __init__(self, margin = 2):
+        self.correct = 0
+        self.total = 0
+        self.margin = margin
+        
+    def __call__(self, outputs, target, loss_outputs):
+        anchor = outputs[0]
+        positive = outputs[1]
+        
+        distance = torch.pairwise_distance(anchor, positive, keepdim=True)
+        pred = (distance - self.margin).cpu().data
+        # print((torch.abs(anchor - positive) > 0).count_nonzero() / anchor.shape[0])
+        self.correct += (pred < 0).count_nonzero()
+        self.total += len(distance)
+        return 
+
+    def value(self):
+        return 100 * float(self.correct) / self.total
+    
+    def reset(self):
+        self.correct = 0
+        self.total = 0
+
+    
+    def name(self):
+        return 'Accuracy'
 
 class AccumulatedAccuracyMetric(Metric):
     """
@@ -53,7 +80,7 @@ class AverageNonzeroTripletsMetric(Metric):
         self.values = []
 
     def __call__(self, outputs, target, loss):
-        self.values.append(loss[1])
+        self.values.append(loss.item())
         return self.value()
 
     def reset(self):

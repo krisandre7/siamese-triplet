@@ -47,6 +47,8 @@ fit:
   log_interval: 2
   save_best: True
   save_after: 50
+  metrics: ['triplet-accuracy']
+  accuracy_margin: 1
 
 # Model
 output_num: 1
@@ -57,7 +59,7 @@ accuracy_threshold: 0.3
 
 # 0: ContrastiveLoss
 # 1: Binary Cross Entropy
-loss: 1
+loss_margin: 1
 
 # Training
 learning_rate: 0.001

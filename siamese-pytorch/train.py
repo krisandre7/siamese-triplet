@@ -12,9 +12,10 @@ from losses import TripletLoss
 from torch import optim
 from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
+from metrics import AccumulatedAccuracyMetric, AverageNonzeroTripletsMetric, TripletAccuracy
 
 def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, n_epochs, log_interval, 
-        save_best, save_after, metrics=[], start_epoch=0):
+        save_best, save_after, accuracy_margin = 2, metrics=[], start_epoch=0):
     """
     Loaders, model, loss function and metrics should work together for a given task,
     i.e. The model should be able to process data output of loaders,
@@ -25,6 +26,16 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
     Online triplet learning: batch loader, embedding model, online triplet loss
     """
     
+    metrics_funcs = []
+    
+    for metric in metrics:
+        if metric == 'accuracy':
+            metrics_funcs.append(AccumulatedAccuracyMetric())
+        elif metric == 'nonzero-triplets':
+            metrics_funcs.append(AverageNonzeroTripletsMetric())
+        elif metric == 'triplet-accuracy':
+            metrics_funcs.append(TripletAccuracy(accuracy_margin))
+    
     # Initialize TensorBoard
     writer = SummaryWriter(os.path.join(final_path))
 
@@ -33,18 +44,18 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
 
         # Train stage
         train_loss, metrics = train_epoch(train_loader, model, loss_fn, 
-                                          optimizer, device, log_interval, metrics)
+                                          optimizer, device, log_interval, metrics_funcs)
         
         scheduler.step()
         
         writer.add_scalar('train_loss', train_loss, epoch)
-        # writer.add_scalar('train_acc', accuracy, epoch)
 
         message = 'Epoch: {}/{}. Train set: Average loss: {:.4f}'.format(epoch + 1, n_epochs, train_loss)
         for metric in metrics:
             message += '\t{}: {}'.format(metric.name(), metric.value())
+            writer.add_scalar(f'train_{metric.name().lower()}', metric.value(), epoch)
 
-        val_loss, metrics = test_epoch(val_loader, model, loss_fn, device, metrics)
+        val_loss, metrics = test_epoch(val_loader, model, loss_fn, device, metrics_funcs)
         val_loss /= len(val_loader) if len(val_loader) != 0 else 1
         
         writer.add_scalar('val_loss', val_loss, epoch)
@@ -53,6 +64,7 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
                                                                                  val_loss)
         for metric in metrics:
             message += '\t{}: {}'.format(metric.name(), metric.value())
+            writer.add_scalar(f'val_{metric.name().lower()}', metric.value(), epoch)
 
         print(message)
         
@@ -81,8 +93,8 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
                 os.path.join(final_path, "epoch_{}.pt".format(epoch + 1))
             )
 
-def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, metrics):
-    for metric in metrics:
+def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, metrics_funcs):
+    for metric in metrics_funcs:
         metric.reset()
 
     model.train()
@@ -104,25 +116,25 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
         loss.backward()
         optimizer.step()
 
-        for metric in metrics:
+        for metric in metrics_funcs:
             metric(outputs, target, loss_outputs)
 
         if batch_idx % log_interval == 0:
             message = 'Train: [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 batch_idx * len(data[0]), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), np.mean(losses))
-            for metric in metrics:
-                message += '\t{}: {}'.format(metric.name(), metric.value())
+            for metric in metrics_funcs:
+                message += '\t{}: {:.2f}'.format(metric.name(), metric.value())
 
             print(message)
             losses = []
 
     total_loss /= (batch_idx + 1)
-    return total_loss, metrics
+    return total_loss, metrics_funcs
 
-def test_epoch(val_loader, model, loss_fn, device, metrics):
+def test_epoch(val_loader, model, loss_fn, device, metrics_funcs):
     with torch.no_grad():
-        for metric in metrics:
+        for metric in metrics_funcs:
             metric.reset()
         model.eval()
         val_loss = 0
@@ -136,10 +148,10 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
             loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
             val_loss += loss.item()
 
-            for metric in metrics:
+            for metric in metrics_funcs:
                 metric(outputs, target, loss_outputs)
 
-    return val_loss, metrics
+    return val_loss, metrics_funcs
 
 if __name__ == "__main__":
     torch.cuda.empty_cache()
@@ -196,14 +208,13 @@ if __name__ == "__main__":
     triplet_train_loader = DataLoader(triplet_train_dataset, **args['train_dataloader'])
     triplet_test_loader = DataLoader(triplet_test_dataset, **args['test_dataloader'])
     
-    margin = 1.
     embedding_net = EmbeddingNet(args['final_shape'])
     model = TripletNet(embedding_net)
     model.to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=args['learning_rate'])
     scheduler = lr_scheduler.StepLR(optimizer, **args['lr_scheduler'])
-    loss_fn = TripletLoss(margin)
+    loss_fn = TripletLoss(args['loss_margin'])
     
     fit(triplet_train_loader, triplet_test_loader, model, loss_fn, optimizer, scheduler, device, **args['fit'])
     
