@@ -7,22 +7,24 @@ output_path: './reports'
 random_seed: 42
 
 # StratifiedShuffleSplit
-train_size: 0.666
-test_size: 0.334
+train_size: 0.667
+test_size: 0.333
 # train_size: 0.334
 # test_size: 0.666
 
 # Datasets
-final_shape: [3, 280, 320]
+final_shape: [1, 280, 320]
 dataset_dir: './'
 train_dataset:
   augment: True
-  grayscale: False
+  grayscale: True
   shuffle: True
+  train: True
 test_dataset:
   augment: False
-  grayscale: False
+  grayscale: True
   shuffle: False
+  train: False
 
 
 # Dataloader

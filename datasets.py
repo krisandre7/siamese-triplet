@@ -3,37 +3,57 @@ from PIL import Image
 
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
+import torch
+from torchvision import transforms
 
-class MyDataset(Dataset):
-    
+class CasiaDataset(Dataset):
+    def __init__(self, image_paths, image_classes, final_shape, train, grayscale, augment=False, **kwargs):
+        self.image_paths = image_paths
+        self.image_classes = image_classes
+        self.grayscale = grayscale
+        self.train = train
+        
+        self.transform = transforms.Compose([
+                transforms.ToTensor(),
+            ])
+    def __getitem__(self, index):
+        image = Image.open(self.image_paths[index]).convert("L" if self.grayscale == 1 else "RGB")
+        
+        return self.transform(image).float(), self.image_classes[index]
+    def __len__(self):
+        return len(self.image_paths)
 
-class SiameseMNIST(Dataset):
+class SiameseCasia(Dataset):
     """
     Train: For each sample creates randomly a positive or a negative pair
     Test: Creates fixed pairs for testing
     """
 
-    def __init__(self, mnist_dataset):
-        self.mnist_dataset = mnist_dataset
+    def __init__(self, image_paths, image_classes, final_shape, random_seed, shuffle, grayscale, augment=False, **kwargs):
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+        ])
+        
+        self.image_paths = image_paths
+        self.image_classes = image_classes
+        self.shuffle = shuffle
+        self.grayscale = grayscale
 
-        self.train = self.mnist_dataset.train
-        self.transform = self.mnist_dataset.transform
-
-        if self.train:
-            self.train_labels = self.mnist_dataset.train_labels
-            self.train_data = self.mnist_dataset.train_data
+        if self.shuffle:
+            self.train_labels = self.image_classes
+            self.train_data = self.image_paths
             self.labels_set = set(self.train_labels.numpy())
             self.label_to_indices = {label: np.where(self.train_labels.numpy() == label)[0]
                                      for label in self.labels_set}
         else:
             # generate fixed pairs for testing
-            self.test_labels = self.mnist_dataset.test_labels
-            self.test_data = self.mnist_dataset.test_data
+            self.test_labels = self.image_classes
+            self.test_data = self.image_paths
             self.labels_set = set(self.test_labels.numpy())
             self.label_to_indices = {label: np.where(self.test_labels.numpy() == label)[0]
                                      for label in self.labels_set}
 
-            random_state = np.random.RandomState(29)
+            random_state = np.random.RandomState(random_seed)
 
             positive_pairs = [[i,
                                random_state.choice(self.label_to_indices[self.test_labels[i].item()]),
@@ -51,10 +71,10 @@ class SiameseMNIST(Dataset):
             self.test_pairs = positive_pairs + negative_pairs
 
     def __getitem__(self, index):
-        if self.train:
+        if self.shuffle:
             target = np.random.randint(0, 2)
             img1, label1 = self.train_data[index], self.train_labels[index].item()
-            if target == 1:
+            if target == 1 and len(self.label_to_indices[label1]) > 1:
                 siamese_index = index
                 while siamese_index == index:
                     siamese_index = np.random.choice(self.label_to_indices[label1])
@@ -67,15 +87,15 @@ class SiameseMNIST(Dataset):
             img2 = self.test_data[self.test_pairs[index][1]]
             target = self.test_pairs[index][2]
 
-        img1 = Image.fromarray(img1.numpy(), mode='L')
-        img2 = Image.fromarray(img2.numpy(), mode='L')
+        img1 = Image.open(img1).convert("L" if self.grayscale == 1 else "RGB")
+        img2 = Image.open(img2).convert("L" if self.grayscale == 1 else "RGB")
         if self.transform is not None:
             img1 = self.transform(img1)
             img2 = self.transform(img2)
         return (img1, img2), target
 
     def __len__(self):
-        return len(self.mnist_dataset)
+        return len(self.image_paths)
 
 
 class TripletMNIST(Dataset):

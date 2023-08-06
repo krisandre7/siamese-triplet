@@ -6,14 +6,25 @@ import glob
 from torch import Tensor
 from sklearn.model_selection import StratifiedShuffleSplit
 
-def get_label(path: str):
-    dataset_split = path.split('dataset',1)[1]
+def get_out_features(sequential: torch.nn.Module, img_shape: tuple):
+    # Calculate the output shape of the last convolutional layer
+    dummy_input = torch.zeros(1, img_shape[0], img_shape[1], img_shape[2])
+    with torch.no_grad():
+        dummy_output = sequential(dummy_input)
+        
+    out_shape = torch.tensor(dummy_output.shape)
+
+    # Calculate the input size for the fully connected layers
+    return torch.prod(out_shape)
+
+def get_label(path: str, dataset_name: str):
+    dataset_split = path.split(dataset_name,1)[1]
     label = int(dataset_split.split('/',2)[1])
     return label - 1
 
-def getDataset(dataset_dir: str):
+def getDataset(dataset_dir: str, dataset_name: str):
     file_paths = np.sort(glob.glob(dataset_dir + '/*/*.bmp'))
-    labels = np.array([get_label(path) for path in file_paths], np.float32)
+    labels = np.array([get_label(path, dataset_name) for path in file_paths], np.float32)
     
     return file_paths, labels
 

@@ -1,16 +1,16 @@
 import torch.nn as nn
 import torch.nn.functional as F
-
+from utils import get_out_features
 
 class EmbeddingNet(nn.Module):
-    def __init__(self):
+    def __init__(self, img_shape):
         super(EmbeddingNet, self).__init__()
         self.convnet = nn.Sequential(nn.Conv2d(1, 32, 5), nn.PReLU(),
                                      nn.MaxPool2d(2, stride=2),
                                      nn.Conv2d(32, 64, 5), nn.PReLU(),
                                      nn.MaxPool2d(2, stride=2))
 
-        self.fc = nn.Sequential(nn.Linear(64 * 4 * 4, 256),
+        self.fc = nn.Sequential(nn.Linear(get_out_features(self.convnet, img_shape), 256),
                                 nn.PReLU(),
                                 nn.Linear(256, 256),
                                 nn.PReLU(),
