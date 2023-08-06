@@ -112,6 +112,7 @@ class HardNegativePairSelector(PairSelector):
         all_pairs = torch.LongTensor(all_pairs)
         positive_pairs = all_pairs[(labels[all_pairs[:, 0]] == labels[all_pairs[:, 1]]).nonzero()]
         negative_pairs = all_pairs[(labels[all_pairs[:, 0]] != labels[all_pairs[:, 1]]).nonzero()]
+        print(len(labels), all_pairs.shape, positive_pairs.shape, negative_pairs.shape)
 
         negative_distances = distance_matrix[negative_pairs[:, 0], negative_pairs[:, 1]]
         negative_distances = negative_distances.cpu().data.numpy()

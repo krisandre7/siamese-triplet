@@ -26,7 +26,7 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, n_epochs
             message += '\t{}: {}'.format(metric.name(), metric.value())
 
         val_loss, metrics = test_epoch(val_loader, model, loss_fn, device, metrics)
-        val_loss /= len(val_loader)
+        val_loss /= len(val_loader) if len(val_loader) != 0 else 1
 
         message += '\nEpoch: {}/{}. Validation set: Average loss: {:.4f}'.format(epoch + 1, n_epochs,
                                                                                  val_loss)
@@ -43,8 +43,10 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
     model.train()
     losses = []
     total_loss = 0
+    batch_idx = 0
 
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for idx, (data, target) in enumerate(train_loader):
+        batch_idx = idx
         target = target.to(device) if len(target) > 0 else None
         # if not type(data) in (tuple, list):
         #     data = (data,)
@@ -56,19 +58,17 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
         # data = tuple(d.to(device) for d in data)
 
         optimizer.zero_grad()
-        # outputs = model(*data)
-        outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
+        outputs = model(data.to(device))
 
         # if type(outputs) not in (tuple, list):
         #     outputs = (outputs,)
-
         # loss_inputs = outputs
         # if target is not None:
         #     target = (target,)
         #     loss_inputs += target
 
-        # loss_outputs = loss_fn(*loss_inputs)
-        loss_outputs = loss_fn(*outputs)
+        loss_outputs = loss_fn(outputs, target)
+        # loss_outputs = loss_fn(*outputs)
         loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
         losses.append(loss.item())
         total_loss += loss.item()
@@ -100,8 +100,8 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
         val_loss = 0
         for batch_idx, (data, target) in enumerate(val_loader):
             target = target.to(device) if len(target) > 0 else None
-            # if not type(data) in (tuple, list):
-            #     data = (data,)
+            if not type(data) in (tuple, list):
+                data = (data,)
             # if cuda:
             #     data = tuple(d.cuda() for d in data)
             #     if target is not None:
@@ -109,17 +109,17 @@ def test_epoch(val_loader, model, loss_fn, device, metrics):
             # target = target.type(torch.LongTensor)
             # data = tuple(d.to(device) for d in data)
 
-            outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
+            outputs = model(*data)
 
-            # if type(outputs) not in (tuple, list):
-            #     outputs = (outputs,)
-            # loss_inputs = outputs
-            # if target is not None:
-            #     target = (target,)
-            #     loss_inputs += target
+            if type(outputs) not in (tuple, list):
+                outputs = (outputs,)
+            loss_inputs = outputs
+            if target is not None:
+                target = (target,)
+                loss_inputs += target
 
-            # loss_outputs = loss_fn(*loss_inputs)
-            loss_outputs = loss_fn(*outputs)
+            loss_outputs = loss_fn(*loss_inputs)
+            # loss_outputs = loss_fn(*outputs)
             loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
             val_loss += loss.item()
 
