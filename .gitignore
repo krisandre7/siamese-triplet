@@ -1,4 +1,6 @@
 casia
+.vscode
+reports
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

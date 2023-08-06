@@ -30,15 +30,29 @@ test_dataset:
 # Dataloader
 train_dataloader:
   batch_size: 64
-  drop_last: True
-val_dataloader:
+  shuffle: True
+test_dataloader:
   batch_size: 64
+  shuffle: False
+
+# LR Scheduler
+lr_scheduler:
+  step_size: 8
+  gamma: 0.1
+  last_epoch: -1
+
+# Training Fit
+fit:
+  n_epochs: 20
+  log_interval: 2
+  save_best: True
+  save_after: 50
 
 # Model
 output_num: 1
 
 # loss
-similarity_margin: 2.0
+similarity_margin: 1.0
 accuracy_threshold: 0.3
 
 # 0: ContrastiveLoss
@@ -47,6 +61,3 @@ loss: 1
 
 # Training
 learning_rate: 0.001
-epochs: 1000
-save_best: True
-save_after: 50
