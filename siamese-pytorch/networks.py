@@ -40,6 +40,21 @@ class EmbeddingNetL2(EmbeddingNet):
         return self.forward(x)
 
 
+class ClassificationPerceptron(nn.Module):
+    def __init__(self, input_num, output_num):
+        super(ClassificationPerceptron, self).__init__()
+        self.n_classes = output_num
+        self.fc = nn.Sequential(
+            nn.Linear(input_num, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, self.n_classes),
+            nn.Softmax()
+        )
+
+    def forward(self, x):
+        return self.fc(x)
+
+
 class ClassificationNet(nn.Module):
     def __init__(self, embedding_net, n_classes):
         super(ClassificationNet, self).__init__()

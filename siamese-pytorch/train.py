@@ -14,7 +14,7 @@ from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 from metrics import AccumulatedAccuracyMetric, AverageNonzeroTripletsMetric, TripletAccuracy
 
-def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, n_epochs, log_interval, 
+def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, final_path, n_epochs, log_interval, 
         save_best, save_after, accuracy_margin = 2, metrics=[], start_epoch=0):
     """
     Loaders, model, loss function and metrics should work together for a given task,
@@ -37,7 +37,7 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
             metrics_funcs.append(TripletAccuracy(accuracy_margin))
     
     # Initialize TensorBoard
-    writer = SummaryWriter(os.path.join(final_path))
+    writer = SummaryWriter(final_path)
 
     best_val = 10000000000
     for epoch in range(start_epoch, n_epochs):
@@ -75,7 +75,6 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
                 {
                     "epoch": epoch + 1,
                     "model_state_dict": model.state_dict(),
-                    "backbone": args['backbone'],
                     "optimizer_state_dict": optimizer.state_dict()
                 },
                 os.path.join(final_path, "best.pt")
@@ -87,7 +86,6 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
                 {
                     "epoch": epoch + 1,
                     "model_state_dict": model.state_dict(),
-                    "backbone": args['backbone'],
                     "optimizer_state_dict": optimizer.state_dict()
                 },
                 os.path.join(final_path, "epoch_{}.pt".format(epoch + 1))
@@ -104,12 +102,24 @@ def train_epoch(train_loader, model, loss_fn, optimizer, device, log_interval, m
 
     for idx, (data, target) in enumerate(train_loader):
         batch_idx = idx
-        target = target.to(device) if len(target) > 0 else None
+        target = target.type(torch.LongTensor).to(device) if len(target) > 0 else None
+        if not type(data) in (tuple, list):
+            data = (data,)
+
+        data = tuple(d.to(device) for d in data)
 
         optimizer.zero_grad()
-        outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
+        outputs = model(*data)
+        
+        if type(outputs) not in (tuple, list):
+            outputs = (outputs,)
+        
+        loss_inputs = outputs
+        if target is not None:
+            target = (target,)
+            loss_inputs += target
 
-        loss_outputs = loss_fn(*outputs)
+        loss_outputs = loss_fn(*loss_inputs)
         loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
         losses.append(loss.item())
         total_loss += loss.item()
@@ -139,12 +149,23 @@ def test_epoch(val_loader, model, loss_fn, device, metrics_funcs):
         model.eval()
         val_loss = 0
         for batch_idx, (data, target) in enumerate(val_loader):
-            target = target.to(device) if len(target) > 0 else None
+            target = target.type(torch.LongTensor).to(device) if len(target) > 0 else None
+            if not type(data) in (tuple, list):
+                data = (data,)
 
-            outputs = model(data[0].to(device), data[1].to(device), data[2].to(device))
+            data = tuple(d.to(device) for d in data)
 
-            loss_outputs = loss_fn(*outputs)
-            # loss_outputs = loss_fn(*outputs)
+            outputs = model(*data)
+            
+            if type(outputs) not in (tuple, list):
+                outputs = (outputs,)
+            
+            loss_inputs = outputs
+            if target is not None:
+                target = (target,)
+                loss_inputs += target
+
+            loss_outputs = loss_fn(*loss_inputs)
             loss = loss_outputs[0] if type(loss_outputs) in (tuple, list) else loss_outputs
             val_loss += loss.item()
 
@@ -162,6 +183,8 @@ if __name__ == "__main__":
         
         # Assign a unique folder as training output
     training_id = f'{randomname.get_name()}-{str(random.randint(1,9))}'
+    print('-----------------------------')
+    print(f'Beginning training with id {training_id}!')
 
     final_path = os.path.join(
         args['output_path'], training_id)
@@ -216,7 +239,7 @@ if __name__ == "__main__":
     scheduler = lr_scheduler.StepLR(optimizer, **args['lr_scheduler'])
     loss_fn = TripletLoss(args['loss_margin'])
     
-    fit(triplet_train_loader, triplet_test_loader, model, loss_fn, optimizer, scheduler, device, **args['fit'])
+    fit(triplet_train_loader, triplet_test_loader, model, loss_fn, optimizer, scheduler, device, final_path, **args['fit'])
     
     train_embeddings_baseline, train_labels_baseline = utils.extract_embeddings(train_loader, model, args['output_num'], device)
     utils.plot_embeddings(train_embeddings_baseline, train_labels_baseline)

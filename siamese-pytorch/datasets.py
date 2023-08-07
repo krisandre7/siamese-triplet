@@ -6,6 +6,17 @@ from torch.utils.data.sampler import BatchSampler
 import torch
 from torchvision import transforms
 
+class EmbeddingsDataset(Dataset):
+    def __init__(self, embeddings, labels):
+        self.embeddings = torch.tensor(embeddings)
+        self.labels = torch.tensor(labels)
+
+    def __getitem__(self, index):
+        return self.embeddings[index].float(), self.labels[index]
+    
+    def __len__(self):
+        return len(self.embeddings)
+
 class ImageDataset(Dataset):
     def __init__(self, image_paths, image_classes, final_shape, shuffle, grayscale, augment=False, **kwargs):
         self.image_paths = image_paths

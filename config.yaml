@@ -49,7 +49,7 @@ fit:
   accuracy_margin: 0.5
 
 # Model
-output_num: 5
+output_num: 3
 
 # loss
 loss_margin: 0.5
