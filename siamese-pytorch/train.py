@@ -52,7 +52,7 @@ def fit(train_loader, val_loader, model, loss_fn, optimizer, scheduler, device, 
 
         message = 'Epoch: {}/{}. Train set: Average loss: {:.4f}'.format(epoch + 1, n_epochs, train_loss)
         for metric in metrics:
-            message += '\t{}: {}'.format(metric.name(), metric.value())
+            message += '\t{}: {:.2f}'.format(metric.name(), metric.value())
             writer.add_scalar(f'train_{metric.name().lower()}', metric.value(), epoch)
 
         val_loss, metrics = test_epoch(val_loader, model, loss_fn, device, metrics_funcs)

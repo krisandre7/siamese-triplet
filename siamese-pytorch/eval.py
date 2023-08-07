@@ -8,11 +8,18 @@ from torch.utils.data import DataLoader
 import argparse
 from networks import EmbeddingNet, TripletNet
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV
+from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from pytorch_grad_cam.utils.image import show_cam_on_image
+import torch.functional as F
+from PIL import Image
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 
 if __name__ == "__main__":
     torch.cuda.empty_cache()
@@ -91,34 +98,47 @@ if __name__ == "__main__":
     model.load_state_dict(checkpoint['model_state_dict'])
     
     X_train, y_train = utils.extract_embeddings(train_loader, model, config['output_num'], device)
-    # figure = utils.plot_embeddings(X_train, y_train)
-    # figure.savefig(os.path.join(args.out_path, 'train.png'))
+    figure = utils.plot_embeddings(X_train, y_train)
+    figure.savefig(os.path.join(args.out_path, 'train.png'))
     X_test, y_test = utils.extract_embeddings(test_loader, model, config['output_num'], device)
-    # figure = utils.plot_embeddings(X_test, y_test)
-    # figure.savefig(os.path.join(args.out_path, 'test.png'))
+    figure = utils.plot_embeddings(X_test, y_test)
+    figure.savefig(os.path.join(args.out_path, 'test.png'))
+    X = np.concatenate((X_train, X_test))
+    X_tsne = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=3).fit_transform(np.concatenate(X, axis=0))
+    plt.figure(5,5)
+    plt.scatter(X_tsne[:, 0], X_tsne[:, 1])
+    plt.show()
     
     knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(X_train, y_train)
     
     y_pred = knn.predict(X_test) 
 
-    print(accuracy_score(y_test, y_pred))
+    print(f'Accuracy: {accuracy_score(y_test, y_pred)}%')
+    print(f"Precision {precision_score(y_test, y_pred, average='macro')}")
+    print(f"Recall: {recall_score(y_test, y_pred, average='macro')}")
+    print(f"F1: {f1_score(y_test, y_pred, average='macro')}")
+    conf_matrix = confusion_matrix(y_test, y_pred, normalize='all')
+    disp = ConfusionMatrixDisplay.from_predictions(y_test, y_pred)
     
-    svm = make_pipeline(StandardScaler(), SVC(gamma='auto', random_state=config['random_seed']))
-    svm.fit(X_train, y_train)
-    y_pred = svm.predict(X_test)
-    print(accuracy_score(y_test, y_pred))
+    disp.plot()
+    plt.savefig(os.path.join(args.out_path, 'confusion_matrix.png'))
+
+    # svm = make_pipeline(StandardScaler(), SVC(gamma='auto', random_state=config['random_seed']))
+    # svm.fit(X_train, y_train)
+    # y_pred = svm.predict(X_test)
+    # print(accuracy_score(y_test, y_pred))
     
-    param_grid = {'C': [0.1, 1, 10, 100, 1000], 
-              'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
-              'kernel': ['rbf', 'poly']} 
+    # param_grid = {'C': [0.1, 1, 10, 100, 1000], 
+    #           'gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+    #           'kernel': ['rbf', 'poly']} 
   
-    grid = GridSearchCV(SVC(), param_grid, refit = True, cv=2)
+    # grid = GridSearchCV(SVC(), param_grid, refit = True, cv=2)
     
-    # fitting the model for grid search
-    grid.fit(X_train, y_train)
+    # # fitting the model for grid search
+    # grid.fit(X_train, y_train)
     
-    svm = grid.best_estimator_
+    # svm = grid.best_estimator_
     
-    y_pred = svm.predict(X_test)
-    print(accuracy_score(y_test, y_pred))
+    # y_pred = svm.predict(X_test)
+    # print(accuracy_score(y_test, y_pred))

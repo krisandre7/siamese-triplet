@@ -1,7 +1,7 @@
 # Important info
 dataset_name: 'casia'
-model_name: 'siameseNet18'
-backbone: 'resnet18'
+model_name: 'siameseNet'
+backbone: 'none'
 
 output_path: './reports'
 random_seed: 42
@@ -41,22 +41,18 @@ lr_scheduler:
 
 # Training Fit
 fit:
-  n_epochs: 20
+  n_epochs: 500
   log_interval: 2
   save_best: True
   save_after: 5
   metrics: ['triplet-accuracy']
-  accuracy_margin: 1
+  accuracy_margin: 0.5
 
 # Model
-output_num: 8
+output_num: 5
 
 # loss
-similarity_margin: 1.0
-
-# 0: ContrastiveLoss
-# 1: Binary Cross Entropy
-loss_margin: 1
+loss_margin: 0.5
 
 # Training
 learning_rate: 0.001

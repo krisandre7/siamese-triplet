@@ -6,6 +6,8 @@ import glob
 from torch import Tensor
 from sklearn.model_selection import StratifiedShuffleSplit
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 
 def get_out_features(sequential: torch.nn.Module, img_shape: tuple):
     # Calculate the output shape of the last convolutional layer
@@ -59,13 +61,13 @@ def stratifiedSortedSplit(file_paths: np.array, labels: np.array,
 
 def plot_embeddings(embeddings, targets, xlim=None, ylim=None):
     figure = plt.figure(figsize=(5,5))
-    classes = np.unique(targets.astype(int))
+    classes = np.unique(targets.astype(int))[:10]
     
     legends = [str(i+1) for i in classes]
 
     for i in classes:
         inds = np.where(targets==i)[0]
-        plt.scatter(embeddings[inds,0], embeddings[inds,1], alpha=0.5, color='black')
+        plt.scatter(embeddings[inds,0], embeddings[inds,1], alpha=0.5)
             
     if xlim:
         plt.xlim(xlim[0], xlim[1])

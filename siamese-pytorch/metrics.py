@@ -26,13 +26,13 @@ class TripletAccuracy(Metric):
     def __call__(self, outputs, target, loss_outputs):
         anchor = outputs[0]
         positive = outputs[1]
-        
-        distance = torch.pairwise_distance(anchor, positive, keepdim=True)
-        pred = (distance - self.margin).cpu().data
+        negative = outputs[2]
+        distance_positive = torch.pairwise_distance(anchor, positive).cpu().data
+        distance_negative = torch.pairwise_distance(anchor, negative).cpu().data
         # print((torch.abs(anchor - positive) > 0).count_nonzero() / anchor.shape[0])
-        self.correct += (pred < 0).count_nonzero()
-        self.total += len(distance)
-        return 
+        self.correct += (distance_positive < distance_negative).count_nonzero()
+        self.total += len(distance_positive)
+        return self.value()
 
     def value(self):
         return 100 * float(self.correct) / self.total
