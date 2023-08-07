@@ -58,28 +58,27 @@ def stratifiedSortedSplit(file_paths: np.array, labels: np.array,
     return files_train, labels_train, files_test, labels_test
 
 def plot_embeddings(embeddings, targets, xlim=None, ylim=None):
-    plt.figure(figsize=(5,5))
-    
-    classes = np.unique(targets.astype(int))[:10]
+    figure = plt.figure(figsize=(5,5))
+    classes = np.unique(targets.astype(int))
     
     legends = [str(i+1) for i in classes]
 
     for i in classes:
         inds = np.where(targets==i)[0]
-        plt.scatter(embeddings[inds,0], embeddings[inds,1], alpha=0.5)
+        plt.scatter(embeddings[inds,0], embeddings[inds,1], alpha=0.5, color='black')
             
     if xlim:
         plt.xlim(xlim[0], xlim[1])
     if ylim:
         plt.ylim(ylim[0], ylim[1])
-    plt.legend(legends)
+    # plt.legend(legends)
     
-    plt.show()
+    return figure
 
-def extract_embeddings(dataloader, model, device):
+def extract_embeddings(dataloader, model, output_num: int, device):
     with torch.no_grad():
         model.eval()
-        embeddings = np.zeros((len(dataloader.dataset), 2))
+        embeddings = np.zeros((len(dataloader.dataset), output_num))
         labels = np.zeros(len(dataloader.dataset))
         k = 0
         for images, target in dataloader:

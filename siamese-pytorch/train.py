@@ -208,7 +208,7 @@ if __name__ == "__main__":
     triplet_train_loader = DataLoader(triplet_train_dataset, **args['train_dataloader'])
     triplet_test_loader = DataLoader(triplet_test_dataset, **args['test_dataloader'])
     
-    embedding_net = EmbeddingNet(args['final_shape'])
+    embedding_net = EmbeddingNet(args['final_shape'], args['output_num'])
     model = TripletNet(embedding_net)
     model.to(device)
     
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     
     fit(triplet_train_loader, triplet_test_loader, model, loss_fn, optimizer, scheduler, device, **args['fit'])
     
-    train_embeddings_baseline, train_labels_baseline = utils.extract_embeddings(train_loader, model, device)
+    train_embeddings_baseline, train_labels_baseline = utils.extract_embeddings(train_loader, model, args['output_num'], device)
     utils.plot_embeddings(train_embeddings_baseline, train_labels_baseline)
-    val_embeddings_baseline, val_labels_baseline = utils.extract_embeddings(test_loader, model, device)
+    val_embeddings_baseline, val_labels_baseline = utils.extract_embeddings(test_loader, model, args['output_num'], device)
     utils.plot_embeddings(val_embeddings_baseline, val_labels_baseline)

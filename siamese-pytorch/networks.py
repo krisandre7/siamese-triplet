@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from utils import get_out_features
 
 class EmbeddingNet(nn.Module):
-    def __init__(self, img_shape):
+    def __init__(self, img_shape, output_num: int):
         super(EmbeddingNet, self).__init__()
         self.convnet = nn.Sequential(nn.Conv2d(1, 32, 5), nn.PReLU(),
                                      nn.MaxPool2d(2, stride=2),
@@ -14,7 +14,7 @@ class EmbeddingNet(nn.Module):
                                 nn.PReLU(),
                                 nn.Linear(256, 256),
                                 nn.PReLU(),
-                                nn.Linear(256, 2)
+                                nn.Linear(256, output_num)
                                 )
 
     def forward(self, x):

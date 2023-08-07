@@ -18,13 +18,11 @@ dataset_dir: './'
 train_dataset:
   augment: True
   grayscale: True
-  shuffle: True
-  train: True
+  shuffle: False
 test_dataset:
   augment: False
   grayscale: True
   shuffle: False
-  train: False
 
 
 # Dataloader
@@ -46,16 +44,15 @@ fit:
   n_epochs: 20
   log_interval: 2
   save_best: True
-  save_after: 50
+  save_after: 5
   metrics: ['triplet-accuracy']
   accuracy_margin: 1
 
 # Model
-output_num: 1
+output_num: 8
 
 # loss
 similarity_margin: 1.0
-accuracy_threshold: 0.3
 
 # 0: ContrastiveLoss
 # 1: Binary Cross Entropy
